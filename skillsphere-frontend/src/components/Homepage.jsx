@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { BookOpen } from 'lucide-react';
+import { fetchCourses } from '../api/skillsphere';
 
 // ── Inline SVG Icon Components ────────────────────────────────────────────────
 
@@ -79,12 +81,6 @@ const features = [
   { icon: <IconDashboard />, title: 'Personalized Dashboard', desc: 'Your customized hub for enrollments, recommendations, and achievements.' },
 ];
 
-const courses = [
-  { title: 'Complete Web Development Bootcamp', instructor: 'Sarah Johnson', rating: 4.9, students: '12.5k', tag: 'Development' },
-  { title: 'Advanced Machine Learning with Python', instructor: 'Dr. Alan Chen', rating: 4.8, students: '8.2k', tag: 'AI & Data' },
-  { title: 'UI/UX Design Masterclass', instructor: 'Emma Watson', rating: 4.9, students: '15.1k', tag: 'Design' },
-];
-
 const steps = [
   { icon: <IconSearch />, title: 'Browse Courses', step: '01', desc: 'Search through hundreds of expert-curated courses.' },
   { icon: <IconCheck />, title: 'Enroll', step: '02', desc: 'Sign up in seconds and unlock your learning path.' },
@@ -97,10 +93,19 @@ const testimonials = [
   { name: 'David L.', role: 'Data Analyst', initial: 'D', quote: 'The interactive learning approach is exactly what I needed. Complex concepts feel approachable and I can apply them immediately.' },
 ];
 
-const tagColors = {
-  Development: 'bg-blue-100 text-blue-700',
-  'AI & Data': 'bg-purple-100 text-purple-700',
-  Design: 'bg-pink-100 text-pink-700',
+const DEFAULT_TAG_COLOR = 'bg-blue-100 text-blue-700';
+
+// Category gradient styles — matches Courses.jsx exactly
+const CATEGORY_STYLES = {
+  'Software Development': { bg: 'from-blue-50 via-indigo-50 to-purple-100', text: 'text-blue-600', badge: 'bg-blue-100 text-blue-700', glow: 'hover:shadow-blue-100' },
+  'Web Development': { bg: 'from-sky-50 via-blue-50 to-indigo-100', text: 'text-blue-600', badge: 'bg-blue-100 text-blue-700', glow: 'hover:shadow-blue-100' },
+  'Programming': { bg: 'from-indigo-50 via-blue-50 to-sky-100', text: 'text-indigo-600', badge: 'bg-indigo-100 text-indigo-700', glow: 'hover:shadow-indigo-100' },
+  'Data Science': { bg: 'from-emerald-50 via-teal-50 to-cyan-100', text: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-700', glow: 'hover:shadow-emerald-100' },
+  'Design': { bg: 'from-pink-50 via-rose-50 to-orange-100', text: 'text-pink-600', badge: 'bg-pink-100 text-pink-700', glow: 'hover:shadow-pink-100' },
+  'UI/UX': { bg: 'from-pink-50 via-rose-50 to-orange-100', text: 'text-pink-600', badge: 'bg-pink-100 text-pink-700', glow: 'hover:shadow-pink-100' },
+  'AI & Data': { bg: 'from-violet-50 via-purple-50 to-fuchsia-100', text: 'text-violet-600', badge: 'bg-violet-100 text-violet-700', glow: 'hover:shadow-violet-100' },
+  'Machine Learning': { bg: 'from-violet-50 via-purple-50 to-fuchsia-100', text: 'text-violet-600', badge: 'bg-violet-100 text-violet-700', glow: 'hover:shadow-violet-100' },
+  'Business': { bg: 'from-amber-50 via-orange-50 to-yellow-100', text: 'text-amber-600', badge: 'bg-amber-100 text-amber-700', glow: 'hover:shadow-amber-100' },
 };
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -116,36 +121,50 @@ const FeatureCard = ({ icon, title, desc }) => (
   </div>
 );
 
-const CourseCard = ({ title, instructor, rating, students, tag }) => (
-  <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col">
-    <div className="h-44 bg-gray-50 border-b border-gray-100 relative flex flex-col items-center justify-center overflow-hidden gap-2">
-      <div className="w-16 h-16 rounded-full bg-white border border-gray-100 shadow-sm flex items-center justify-center
-                      group-hover:scale-110 transition-transform duration-300 text-blue-500">
-        <IconMonitor />
+// CourseCard — matches Courses.jsx card style exactly
+const CourseCard = ({ title, description, category, level, onEnroll }) => {
+  const style = CATEGORY_STYLES[category] || {
+    bg: 'from-slate-50 via-gray-50 to-zinc-100',
+    text: 'text-slate-600',
+    badge: 'bg-slate-100 text-slate-700',
+    glow: 'hover:shadow-slate-100',
+  };
+  return (
+    <div className={`group bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-2xl ${style.glow} hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden min-h-[380px]`}>
+      {/* Card Top — gradient */}
+      <div className={`h-44 bg-gradient-to-br ${style.bg} border-b border-gray-100 flex flex-col items-center justify-center gap-3 relative`}>
+        <div className={`w-20 h-20 rounded-full bg-white/80 ${style.text} flex items-center justify-center shadow-md border border-white group-hover:scale-110 transition-transform duration-300`}>
+          <BookOpen className="w-9 h-9" />
+        </div>
+        {category && (
+          <span className={`text-xs font-semibold px-4 py-1.5 rounded-full ${style.badge}`}>
+            {category}
+          </span>
+        )}
+        {level && (
+          <span className="text-xs font-semibold px-3 py-1 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">
+            {level}
+          </span>
+        )}
       </div>
-      <span className={`text-xs font-semibold px-3 py-1 rounded-full ${tagColors[tag] || 'bg-gray-100 text-gray-600'}`}>
-        {tag}
-      </span>
+      {/* Card Body */}
+      <div className="p-6 flex flex-col flex-1">
+        <h3 className="text-[17px] font-semibold text-gray-800 mb-3 leading-snug line-clamp-2">{title}</h3>
+        {description && (
+          <p className="text-sm text-gray-500 leading-relaxed line-clamp-3 mb-5">{description}</p>
+        )}
+        <div className="mt-auto">
+          <button
+            onClick={onEnroll}
+            className="w-full text-sm font-semibold text-blue-600 border-2 border-blue-600 px-4 py-3 rounded-2xl hover:bg-blue-600 hover:text-white transition-all duration-300"
+          >
+            Enroll Now
+          </button>
+        </div>
+      </div>
     </div>
-    <div className="p-6 flex flex-col flex-1">
-      <div className="flex items-center gap-1.5 text-yellow-400 mb-3">
-        {[...Array(5)].map((_, i) => (
-          <IconStar key={i} className="w-3.5 h-3.5" />
-        ))}
-        <span className="text-sm font-semibold text-gray-700 ml-1">{rating}</span>
-        <span className="text-xs text-gray-400">({students} students)</span>
-      </div>
-      <h3 className="text-base font-bold text-gray-900 mb-2 leading-snug line-clamp-2">{title}</h3>
-      <p className="text-sm text-gray-500 mb-5">By {instructor}</p>
-      <div className="mt-auto">
-        <button className="w-full py-2.5 rounded-xl font-semibold text-sm border-2 border-blue-600 text-blue-600
-                           hover:bg-blue-600 hover:text-white transition-all duration-300">
-          Enroll Now
-        </button>
-      </div>
-    </div>
-  </div>
-);
+  );
+};
 
 const StepCard = ({ icon, title, step, desc }) => (
   <div className="flex flex-col items-center text-center bg-white rounded-2xl p-8 shadow-sm border border-gray-100
@@ -183,6 +202,41 @@ const TestimonialCard = ({ name, role, initial, quote }) => (
 const HomePage = () => {
   const navigate = useNavigate();
   const onNavigateToCourses = () => navigate('/courses');
+
+  const [allCourses, setAllCourses] = useState([]);
+  const [activeCategory, setActiveCategory] = useState('All');
+
+  useEffect(() => {
+    fetchCourses()
+      .then((data) => setAllCourses(data))
+      .catch((err) => console.error('Failed to load courses:', err));
+  }, []);
+
+  // Build category list dynamically from fetched data
+  const categories = ['All', ...Array.from(
+    new Set(allCourses.map((c) => c.category).filter(Boolean))
+  )];
+
+  // Pin the 3 specific courses requested (by title match)
+  const PINNED_TITLES = [
+    'Data Structures and Algorithms',
+    'UI/UX Design Fundamentals',
+    'Advanced Machine Learning with Python',
+  ];
+
+  // Try to find pinned courses first; fall back to first 3 if any are missing
+  const pinnedCourses = PINNED_TITLES
+    .map((t) => allCourses.find((c) => c.title === t))
+    .filter(Boolean);
+
+  const displayedCourses = (pinnedCourses.length === 3
+    ? pinnedCourses
+    : (activeCategory === 'All'
+      ? allCourses
+      : allCourses.filter((c) => c.category === activeCategory)
+    ).slice(0, 3)
+  );
+
   return (
     <div className="min-h-screen bg-gray-300 text-gray-800 font-sans antialiased">
 
@@ -290,7 +344,7 @@ const HomePage = () => {
       {/* ── Popular Courses Section ── */}
       <section id="courses" className="py-24 px-6 bg-white">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mb-14 gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mb-8 gap-4">
             <div>
               <p className="text-blue-600 font-semibold text-sm mb-2 tracking-wide uppercase">Top Picks</p>
               <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">Popular Courses</h2>
@@ -304,11 +358,45 @@ const HomePage = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {courses.map((course, idx) => (
-              <CourseCard key={idx} {...course} />
+          {/* Dynamic category tabs */}
+          <div className="flex flex-wrap gap-2 mb-10">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`px-4 py-1.5 rounded-full text-sm font-semibold border transition-all duration-200
+                  ${activeCategory === cat
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'}`}
+              >
+                {cat}
+              </button>
             ))}
           </div>
+
+          {displayedCourses.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {displayedCourses.map((course) => (
+                <CourseCard
+                  key={course.id}
+                  title={course.title}
+                  description={course.description}
+                  category={course.category}
+                  level={course.level}
+                  onEnroll={onNavigateToCourses}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-400">
+              <p className="text-sm">No courses found in this category yet.</p>
+              <button
+                onClick={() => setActiveCategory('All')}
+                className="mt-3 text-blue-600 text-sm font-semibold hover:underline">
+                Show all courses
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
@@ -373,10 +461,6 @@ const HomePage = () => {
         <div className="max-w-3xl mx-auto text-center text-white">
           <h2 className="text-3xl md:text-4xl font-extrabold mb-4">Start Learning Today — For Free</h2>
           <p className="text-blue-100 mb-8">Join over 50,000 learners already growing their skills on SkillSphere.</p>
-          <button className="bg-white text-blue-700 px-10 py-4 rounded-full font-bold text-base
-                             hover:shadow-2xl hover:scale-105 transition-all duration-300 shadow-lg">
-            Create Your Free Account
-          </button>
         </div>
       </section>
 

@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
-  Search, Star, Code2, Globe, BarChart2, Palette, Briefcase,
-  Layers, BookOpen, TrendingUp, Flame, Award, ChevronDown,
+  Search, Star, BookOpen, TrendingUp, Flame, Award, ChevronDown,
   ArrowLeft, Heart,
 } from 'lucide-react';
 import EnrollModal from './Modal';
@@ -13,14 +12,7 @@ import { useAuth } from '../context/AuthContext';
 
 
 
-const CATEGORIES = [
-  { label: 'All', icon: <Layers className="w-4 h-4" /> },
-  { label: 'Software Development', icon: <Code2 className="w-4 h-4" /> },
-  { label: 'Web Development', icon: <Globe className="w-4 h-4" /> },
-  { label: 'Data Science', icon: <BarChart2 className="w-4 h-4" /> },
-  { label: 'Design', icon: <Palette className="w-4 h-4" /> },
-  { label: 'Business', icon: <Briefcase className="w-4 h-4" /> },
-];
+// CATEGORIES is now built dynamically from real course data inside the component
 
 const BADGE_STYLES = {
   Popular: 'bg-orange-50 text-orange-600 border border-orange-200',
@@ -33,85 +25,167 @@ const BADGE_ICONS = {
 };
 
 const LEVEL_COLORS = {
-  Beginner: 'bg-green-50 text-green-700',
-  Intermediate: 'bg-yellow-50 text-yellow-700',
-  Advanced: 'bg-red-50 text-red-600',
+  Beginner:     'bg-yellow-50 text-yellow-700 border border-yellow-200',
+  Intermediate: 'bg-yellow-50 text-yellow-700 border border-yellow-200',
+  Advanced:     'bg-yellow-50 text-yellow-700 border border-yellow-200',
 };
 
-const CATEGORY_ICON_BG = {
-  'Software Development': 'bg-violet-50 text-violet-500',
-  'Web Development': 'bg-blue-50 text-blue-500',
-  'Data Science': 'bg-teal-50 text-teal-500',
-  'Design': 'bg-pink-50 text-pink-500',
-  'Business': 'bg-amber-50 text-amber-500',
+const CATEGORY_STYLES = {
+  'Software Development': {
+    bg: 'from-blue-50 via-indigo-50 to-purple-100',
+    text: 'text-blue-600',
+    badge: 'bg-blue-100 text-blue-700',
+    glow: 'hover:shadow-blue-100',
+  },
+  'Web Development': {
+    bg: 'from-sky-50 via-blue-50 to-indigo-100',
+    text: 'text-blue-600',
+    badge: 'bg-blue-100 text-blue-700',
+    glow: 'hover:shadow-blue-100',
+  },
+  Programming: {
+    bg: 'from-indigo-50 via-blue-50 to-sky-100',
+    text: 'text-indigo-600',
+    badge: 'bg-indigo-100 text-indigo-700',
+    glow: 'hover:shadow-indigo-100',
+  },
+  'Data Science': {
+    bg: 'from-emerald-50 via-teal-50 to-cyan-100',
+    text: 'text-emerald-600',
+    badge: 'bg-emerald-100 text-emerald-700',
+    glow: 'hover:shadow-emerald-100',
+  },
+  Design: {
+    bg: 'from-pink-50 via-rose-50 to-orange-100',
+    text: 'text-pink-600',
+    badge: 'bg-pink-100 text-pink-700',
+    glow: 'hover:shadow-pink-100',
+  },
+  'UI/UX': {
+    bg: 'from-pink-50 via-rose-50 to-orange-100',
+    text: 'text-pink-600',
+    badge: 'bg-pink-100 text-pink-700',
+    glow: 'hover:shadow-pink-100',
+  },
+  'AI & Data': {
+    bg: 'from-violet-50 via-purple-50 to-fuchsia-100',
+    text: 'text-violet-600',
+    badge: 'bg-violet-100 text-violet-700',
+    glow: 'hover:shadow-violet-100',
+  },
+  'Machine Learning': {
+    bg: 'from-violet-50 via-purple-50 to-fuchsia-100',
+    text: 'text-violet-600',
+    badge: 'bg-violet-100 text-violet-700',
+    glow: 'hover:shadow-violet-100',
+  },
+  Business: {
+    bg: 'from-amber-50 via-orange-50 to-yellow-100',
+    text: 'text-amber-600',
+    badge: 'bg-amber-100 text-amber-700',
+    glow: 'hover:shadow-amber-100',
+  },
 };
 
 const PAGE_SIZE = 6;
 
 // ── Star Rating ───────────────────────────────────────────────────────────────
 
-const StarRating = ({ rating }) => (
-  <div className="flex items-center gap-1">
-    {[...Array(5)].map((_, i) => (
-      <Star key={i} className={`w-3.5 h-3.5 ${i < Math.floor(rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200 fill-gray-200'}`} />
-    ))}
-    <span className="text-sm font-semibold text-gray-700 ml-1">{rating}</span>
-  </div>
-);
+const StarRating = ({ rating }) => {
+  if (!rating && rating !== 0) return null;
+  return (
+    <div className="flex items-center gap-1">
+      {[...Array(5)].map((_, i) => (
+        <Star key={i} className={`w-3.5 h-3.5 ${i < Math.floor(rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200 fill-gray-200'}`} />
+      ))}
+      <span className="text-sm font-semibold text-gray-700 ml-1">{rating}</span>
+    </div>
+  );
+};
 
 // ── Course Card ───────────────────────────────────────────────────────────────
 
 const CourseCard = ({ course, isWished, onToggleWish, onEnroll }) => {
-  const { title, instructor, rating, students, category, duration, badge, level } = course;
-  const iconBg = CATEGORY_ICON_BG[category] || 'bg-gray-50 text-gray-400';
+  if (!course) return null;
+
+  const {
+    title = 'Untitled Course',
+    description = 'Build practical skills with structured lessons and hands-on learning.',
+    category,
+    duration,
+    level,
+  } = course;
+
+  const style = CATEGORY_STYLES[category] || {
+    bg: 'from-slate-50 via-gray-50 to-zinc-100',
+    text: 'text-slate-100',
+    badge: 'bg-slate-100 text-slate-700',
+    glow: 'hover:shadow-slate-100',
+  };
 
   return (
-    <div className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden">
+    <div
+      className={`group bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-2xl ${style.glow} hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden min-h-[410px]`}
+    >
       {/* Card Top */}
-      <div className="h-44 bg-gray-50 border-b border-gray-100 flex flex-col items-center justify-center gap-3 relative">
-        <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-sm border border-white group-hover:scale-110 transition-transform duration-300 ${iconBg}`}>
-          <BookOpen className="w-7 h-7" />
-        </div>
-        <span className={`text-xs font-semibold px-3 py-1 rounded-full ${LEVEL_COLORS[level] || 'bg-gray-100 text-gray-500'}`}>
-          {level}
-        </span>
-
-        {badge && (
-          <div className={`absolute top-4 right-12 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${BADGE_STYLES[badge]}`}>
-            {BADGE_ICONS[badge]}
-            {badge}
-          </div>
-        )}
-
-        {/* Wishlist heart */}
+      <div
+        className={`h-44 bg-gradient-to-br ${style.bg} border-b border-gray-100 flex flex-col items-center justify-center gap-3 relative`}
+      >
         <button
-          onClick={(e) => { e.stopPropagation(); onToggleWish(); }}
-          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white shadow flex items-center justify-center transition-transform hover:scale-125"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleWish();
+          }}
+          className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/90 shadow-sm flex items-center justify-center transition-transform hover:scale-110"
         >
           <Heart
             className="w-4 h-4 transition-colors duration-200"
-            style={{ color: isWished ? '#ef4444' : '#d1d5db', fill: isWished ? '#ef4444' : 'none' }}
+            style={{
+              color: isWished ? '#ef4444' : '#cbd5e1',
+              fill: isWished ? '#ef4444' : 'none',
+            }}
           />
         </button>
+
+        <div
+          className={`w-20 h-20 rounded-full bg-white/80 ${style.text} flex items-center justify-center shadow-md border border-white group-hover:scale-110 transition-transform duration-300`}
+        >
+          <BookOpen className="w-9 h-9" />
+        </div>
+
+        <span className={`text-xs font-semibold px-4 py-1.5 rounded-full ${style.badge}`}>
+          {category}
+        </span>
+
+        {/* Level badge — yellow for all levels */}
+        {level && (
+          <span className={`text-xs font-semibold px-3 py-1 rounded-full ${LEVEL_COLORS[level] || 'bg-yellow-50 text-yellow-700 border border-yellow-200'}`}>
+            {level}
+          </span>
+        )}
       </div>
 
       {/* Card Body */}
-      <div className="p-5 flex flex-col flex-1">
-        <div className="flex items-center justify-between mb-2">
-          <StarRating rating={rating} />
-          <span className="text-xs text-gray-400">{students} students</span>
-        </div>
+      <div className="p-6 flex flex-col flex-1">
+        <h3 className="text-[17px] font-semibold text-gray-800 mb-3 leading-snug line-clamp-2">
+          {title}
+        </h3>
 
-        <h3 className="text-base font-bold text-gray-900 mb-1 leading-snug line-clamp-2">{title}</h3>
-        <p className="text-sm text-gray-500 mb-4">By {instructor}</p>
+        <p className="text-sm text-gray-500 leading-relaxed line-clamp-3 mb-5">
+          {description}
+        </p>
 
-        <div className="mt-auto flex items-center justify-between">
-          <span className="text-xs text-gray-400 flex items-center gap-1">
-            <TrendingUp className="w-3.5 h-3.5" /> {duration}
-          </span>
+        <div className="mt-auto">
+          <div className="flex items-center text-xs text-gray-400 mb-5">
+            <span className="flex items-center gap-1">
+              <TrendingUp className="w-3.5 h-3.5" />
+              {duration || 'Self-paced'}
+            </span>
+          </div>
+
           <button
             onClick={onEnroll}
-            className="text-sm font-semibold text-blue-600 border-2 border-blue-600 px-4 py-1.5 rounded-xl hover:bg-blue-600 hover:text-white transition-all duration-300"
+            className="w-full text-sm font-semibold text-blue-600 border-2 border-blue-600 px-4 py-3 rounded-2xl hover:bg-blue-600 hover:text-white transition-all duration-300"
           >
             Enroll Now
           </button>
@@ -160,16 +234,29 @@ const Courses = ({ onBack }) => {
         console.error("Error fetching courses:", err);
       }
     };
-
     loadCourses();
   }, []);
+
+  // Build categories dynamically from real data (memoized so it updates when courses load)
+  const dynamicCategories = useMemo(() => [
+    'All',
+    ...Array.from(new Set(allCourses.map((c) => c.category).filter(Boolean))),
+  ], [allCourses]);
 
 
   const filtered = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    return allCourses.filter((c) => {
-      const matchCat = activeCategory === 'All' || c.category === activeCategory;
-      const matchQ = !q || c.title?.toLowerCase().includes(q) || c.instructor?.toLowerCase().includes(q)
+
+    return allCourses.filter((course) => {
+      const matchCat =
+        activeCategory === 'All' || course.category === activeCategory;
+
+      const matchQ =
+        !q ||
+        course.title?.toLowerCase().includes(q) ||
+        course.description?.toLowerCase().includes(q) ||
+        course.category?.toLowerCase().includes(q);
+
       return matchCat && matchQ;
     });
   }, [allCourses, activeCategory, searchQuery]);
@@ -211,7 +298,7 @@ const Courses = ({ onBack }) => {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search by course title or instructor..."
+            placeholder="Search by course title , categories or keyword..."
             value={searchQuery}
             onChange={handleSearch}
             className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-white border border-gray-200 text-sm text-gray-800 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
@@ -220,7 +307,7 @@ const Courses = ({ onBack }) => {
 
         {/* ── Category Filter ── */}
         <div className="flex flex-wrap gap-3 mb-10">
-          {CATEGORIES.map(({ label, icon }) => {
+          {dynamicCategories.map((label) => {
             const isActive = activeCategory === label;
             return (
               <button
@@ -231,7 +318,7 @@ const Courses = ({ onBack }) => {
                     ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200'
                     : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50'}`}
               >
-                {icon}{label}
+                {label}
               </button>
             );
           })}
@@ -252,7 +339,7 @@ const Courses = ({ onBack }) => {
         </div>
 
         {/* ── Course Grid ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 mb-10">
           {visible.length > 0
             ? visible.map((course) => (
               <CourseCard

@@ -3,8 +3,8 @@ import {
   User,
   BookOpen,
   BarChart2,
-  ClipboardList,
-  FileText,
+  /* ClipboardList, */
+  CheckSquare,
   Heart,
   LogOut,
   Sparkles,
@@ -17,8 +17,8 @@ const NAV_ITEMS = [
   { id: 'profile',      label: 'Profile',       icon: User },
   { id: 'courses',      label: 'My Courses',    icon: BookOpen },
   { id: 'progress',     label: 'Progress',      icon: BarChart2 },
-  { id: 'assessments',  label: 'Assessments',   icon: ClipboardList },
-  { id: 'notes',        label: 'Notes',         icon: FileText },
+  // { id: 'assessments',  label: 'Assessments',   icon: ClipboardList },
+  { id: 'tasks',        label: 'Daily Tasks',   icon: CheckSquare },
   { id: 'wishlist',     label: 'My Wishlist',   icon: Heart },
   { id: 'certificates', label: 'Certificates',  icon: Award },
 ];

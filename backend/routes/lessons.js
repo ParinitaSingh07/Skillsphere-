@@ -8,10 +8,10 @@ const router = express.Router();
 router.get('/:courseId', (req, res) => {
   const { courseId } = req.params;
   const sql = `
-    SELECT lesson_id AS id, course_id, title, content
+    SELECT lesson_id AS id, course_id, title, content, video_url, lesson_order
     FROM lessons
     WHERE course_id = ?
-    ORDER BY lesson_id ASC
+    ORDER BY lesson_order ASC
   `;
   db.query(sql, [courseId], (err, rows) => {
     if (err) return res.status(500).json({ error: 'Failed to fetch lessons', details: err.message });

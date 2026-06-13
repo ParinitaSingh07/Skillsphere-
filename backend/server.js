@@ -9,6 +9,7 @@ import enrollmentsRouter from './routes/enrollments.js';
 import lessonsRouter     from './routes/lessons.js';
 import progressRouter    from './routes/progress.js';
 import wishlistRouter    from './routes/wishlist.js';
+import tasksRouter       from './routes/tasks.js';
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use('/enrollments', enrollmentsRouter);   // GET  /enrollments/:userId
 app.use('/lessons',     lessonsRouter);        // GET /lessons/:courseId, POST /lessons/complete
 app.use('/progress',    progressRouter);       // GET /progress/:userId/:courseId
 app.use('/wishlist',    wishlistRouter);       // GET/POST/DELETE /wishlist
+app.use('/tasks',       tasksRouter);           // GET /tasks/:userId, POST /tasks, PUT /tasks/:taskId/toggle
 
 // ── /complete-lesson alias (as specified in requirements) ─────────────────────
 app.post('/complete-lesson', (req, res) => {

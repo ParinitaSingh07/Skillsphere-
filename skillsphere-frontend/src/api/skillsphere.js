@@ -55,3 +55,9 @@ export const fetchWishlist = (userId) => request('GET', `/wishlist/${userId}`);
 
 export const removeFromWishlist = (wishlistId) =>
   request('DELETE', `/wishlist/${wishlistId}`);
+
+// ── Daily Tasks ───────────────────────────────────────────────────────────────
+export const fetchTasks    = (userId)              => request('GET',  `/tasks/${userId}`);
+export const addTask       = (user_id, task_text)  => request('POST', '/tasks', { user_id, task_text });
+export const toggleTask    = (taskId)              => request('PUT',  `/tasks/${taskId}/toggle`);
+

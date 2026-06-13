@@ -159,12 +159,6 @@ const LoginPage = () => {
           </button>
         </form>
 
-        {/* Demo hint */}
-        <div className="mt-5 px-4 py-3 rounded-xl text-center text-xs"
-          style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', color: 'rgba(255,255,255,0.5)' }}>
-          Demo: <span className="text-indigo-300 font-semibold">alex@skillsphere.com</span> / <span className="text-indigo-300 font-semibold">password123</span>
-        </div>
-
         <p className="text-center text-sm mt-5" style={{ color: 'rgba(255,255,255,0.45)' }}>
           Don't have an account?{' '}
           <Link to="/signup" className="font-semibold text-indigo-400 hover:text-indigo-300 transition-colors">

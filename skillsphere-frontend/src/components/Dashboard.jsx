@@ -4,7 +4,7 @@ import ContinueLearning from './ContinueLearning';
 import CertificateModal from './Certificate';
 import {
   Mail, BookOpen, CheckCircle, Circle, Heart,
-  ClipboardList, FileText, Star, TrendingUp, ChevronRight,
+  /* ClipboardList, */ CheckSquare, Star, TrendingUp, ChevronRight,
   Trash2, Award, Download, Loader2, AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -14,16 +14,17 @@ import {
   fetchAllProgress, fetchProgress,
   addToWishlist, fetchWishlist, removeFromWishlist,
   enrollInCourse,
+  fetchTasks, addTask, toggleTask,
 } from '../api/skillsphere.js';
 
 // ── Static fallbacks (used if API returns no data yet) ─────────────────────────
-const ASSESSMENTS = [
-  { id: 1, title: 'HTML & CSS Quiz', course: 'Web Development Bootcamp', status: 'completed', score: '92%' },
-  { id: 2, title: 'JavaScript Fundamentals', course: 'Web Development Bootcamp', status: 'completed', score: '88%' },
-  { id: 3, title: 'Figma Design Challenge', course: 'UI/UX Design Masterclass', status: 'pending', score: null },
-  { id: 4, title: 'React Components Test', course: 'Web Development Bootcamp', status: 'pending', score: null },
-  { id: 5, title: 'Python Data Structures', course: 'Python for Data Analysis', status: 'pending', score: null },
-];
+// const ASSESSMENTS = [
+//   { id: 1, title: 'HTML & CSS Quiz', course: 'Web Development Bootcamp', status: 'completed', score: '92%' },
+//   { id: 2, title: 'JavaScript Fundamentals', course: 'Web Development Bootcamp', status: 'completed', score: '88%' },
+//   { id: 3, title: 'Figma Design Challenge', course: 'UI/UX Design Masterclass', status: 'pending', score: null },
+//   { id: 4, title: 'React Components Test', course: 'Web Development Bootcamp', status: 'pending', score: null },
+//   { id: 5, title: 'Python Data Structures', course: 'Python for Data Analysis', status: 'pending', score: null },
+// ];
 
 const LEVEL_COLORS = {
   Beginner: 'bg-green-100 text-green-700',
@@ -94,13 +95,15 @@ const ProfileSection = ({ user, enrolledCourses, allProgress, streak }) => {
 
 // ── Section: My Courses ───────────────────────────────────────────────────────
 
-const MyCoursesSection = ({ user, enrolledCourses, allCourses, wishlistItems, onWishlistChange, onProgress }) => {
+const MyCoursesSection = ({ user, enrolledCourses, allCourses, allProgress, wishlistItems, onWishlistChange, onProgress, onEnroll }) => {
   const userId = user?.db_id;
   const [expandedId, setExpandedId] = useState(null);
+  const [expandedLessonId, setExpandedLessonId] = useState(null); // for showing lesson content
   const [courseLessons, setCourseLessons] = useState({});      // { courseId: lesson[] }
   const [courseProgress, setCourseProgress] = useState({});    // { courseId: { percentage, completed_lesson_ids } }
   const [loadingLesson, setLoadingLesson] = useState({});
   const [loadingExpand, setLoadingExpand] = useState(null);
+  const [enrollingId, setEnrollingId] = useState(null);        // tracks which course is being enrolled
   const [certCourse, setCertCourse] = useState(null);
   const [error, setError] = useState(null);
 
@@ -177,16 +180,68 @@ const MyCoursesSection = ({ user, enrolledCourses, allCourses, wishlistItems, on
     }
   };
 
+  // Enroll in a course from the available courses list
+  const handleEnroll = async (courseId) => {
+    if (!userId) return;
+    setEnrollingId(courseId);
+    setError(null);
+    try {
+      await enrollInCourse(userId, courseId);
+      onEnroll?.(); // refresh enrollments in parent
+    } catch (e) {
+      setError('Enrollment failed: ' + e.message);
+    } finally {
+      setEnrollingId(null);
+    }
+  };
+
   const wishlistSet = new Set(wishlistItems.map((w) => w.id));
+  // Courses user is NOT yet enrolled in (for the available courses list)
+  const enrolledIds = new Set(enrolledCourses.map((c) => c.id));
+  const availableCourses = allCourses.filter((c) => !enrolledIds.has(c.id));
 
   if (enrolledCourses.length === 0) {
     return (
       <div className="max-w-2xl">
         <h2 className="text-xl font-bold text-gray-800 mb-6">My Courses</h2>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
+        {error && <div className="mb-4"><ApiError message={error} /></div>}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center mb-8">
           <BookOpen className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-          <p className="text-gray-400 text-sm">You haven't enrolled in any courses yet.</p>
+          <p className="text-gray-700 font-semibold mb-1">You haven't enrolled in any courses yet.</p>
+          <p className="text-gray-400 text-sm">Browse the courses below and click Enroll to get started.</p>
         </div>
+        {availableCourses.length > 0 && (
+          <div>
+            <p className="text-sm font-semibold text-gray-500 mb-4">Available Courses</p>
+            <div className="grid gap-4">
+              {availableCourses.map((course) => (
+                <div
+                  key={course.id}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                    <BookOpen className="w-6 h-6 text-indigo-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-gray-800 text-sm">{course.title}</h4>
+                    {course.category && <p className="text-xs text-gray-400 mt-0.5">{course.category}</p>}
+                    {course.description && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{course.description}</p>}
+                  </div>
+                  <button
+                    onClick={() => handleEnroll(course.id)}
+                    disabled={enrollingId === course.id}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white flex-shrink-0
+                               transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-60"
+                    style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+                  >
+                    {enrollingId === course.id ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    Enroll
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -204,7 +259,15 @@ const MyCoursesSection = ({ user, enrolledCourses, allCourses, wishlistItems, on
           const totalLessons = prog?.total_lessons ?? (lessons?.length ?? '?');
           const isWished = wishlistSet.has(course.id);
           const isExpanded = expandedId === course.id;
-          const isComplete = progress === 100;
+
+          // isComplete: prefer backend allProgress data (persists across tab switches).
+          // Fall back to local courseProgress only if allProgress doesn't have it yet.
+          const backendProg = allProgress.find((p) => p.id === course.id);
+          const backendDone = Number(backendProg?.completed_lessons ?? 0);
+          const backendTotal = Number(backendProg?.total_lessons ?? 0);
+          const isComplete = backendTotal > 0 && backendDone >= backendTotal
+            ? true
+            : (prog?.percentage ?? 0) === 100;
 
           return (
             <div
@@ -297,40 +360,67 @@ const MyCoursesSection = ({ user, enrolledCourses, allCourses, wishlistItems, on
                           {doneCount}/{lessons.length} done
                         </span>
                       </div>
-                      {lessons.map((lesson) => (
-                        <button
-                          key={lesson.id}
-                          onClick={() => toggleLesson(course.id, lesson.id)}
-                          disabled={!!loadingLesson[lesson.id]}
-                          className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-white transition-all duration-150 text-left group disabled:opacity-60"
-                        >
-                          {loadingLesson[lesson.id]
-                            ? <Loader2 className="w-4 h-4 text-indigo-400 animate-spin flex-shrink-0" />
-                            : lesson.done
-                              ? <CheckCircle className="text-indigo-500 flex-shrink-0" style={{ width: '18px', height: '18px' }} />
-                              : <Circle className="text-gray-300 flex-shrink-0 group-hover:text-indigo-300 transition-colors" style={{ width: '18px', height: '18px' }} />}
-                          <div className="flex flex-col flex-1">
-                            <span className={`text-sm ${lesson.done ? 'text-gray-400 line-through' : 'text-gray-700 font-medium'}`}>
-                              {lesson.title}
-                            </span>
-
-                            {lesson.video_url && (
-                              <a
-                                href={lesson.video_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="text-xs text-blue-500 hover:underline mt-1"
+                      {lessons.map((lesson) => {
+                        const isOpen = expandedLessonId === lesson.id;
+                        return (
+                          <div key={lesson.id} className="rounded-xl overflow-hidden">
+                            {/* Lesson row — click left side to expand content, right icon to toggle complete */}
+                            <div className="w-full flex items-center gap-3 py-2.5 px-3 hover:bg-white transition-all duration-150 group rounded-xl">
+                              {/* Complete toggle button */}
+                              <button
+                                onClick={() => toggleLesson(course.id, lesson.id)}
+                                disabled={!!loadingLesson[lesson.id]}
+                                className="flex-shrink-0 disabled:opacity-60"
+                                title={lesson.done ? 'Mark incomplete' : 'Mark complete'}
                               >
-                                ▶ Watch Video
-                              </a>
+                                {loadingLesson[lesson.id]
+                                  ? <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
+                                  : lesson.done
+                                    ? <CheckCircle className="text-indigo-500" style={{ width: '18px', height: '18px' }} />
+                                    : <Circle className="text-gray-300 group-hover:text-indigo-300 transition-colors" style={{ width: '18px', height: '18px' }} />}
+                              </button>
+
+                              {/* Lesson title — click to expand/collapse content */}
+                              <button
+                                onClick={() => setExpandedLessonId(isOpen ? null : lesson.id)}
+                                className="flex-1 text-left"
+                              >
+                                <span className={`text-sm ${lesson.done ? 'text-gray-400 line-through' : 'text-gray-700 font-medium'}`}>
+                                  {lesson.title}
+                                </span>
+                                {lesson.content && (
+                                  <span className="ml-2 text-[10px] text-indigo-400">{isOpen ? '▲ hide' : '▼ read'}</span>
+                                )}
+                              </button>
+
+                              {lesson.done && (
+                                <span className="text-[10px] text-green-500 font-semibold bg-green-50 px-1.5 py-0.5 rounded-full flex-shrink-0">✓</span>
+                              )}
+                            </div>
+
+                            {/* Lesson content (text) — shown when expanded */}
+                            {isOpen && lesson.content && (
+                              <div className="mx-3 mb-2 px-4 py-3 bg-indigo-50 border border-indigo-100 rounded-xl text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                                {lesson.content}
+                              </div>
+                            )}
+
+                            {/* Optional video link — only shown if video_url exists */}
+                            {lesson.video_url && (
+                              <div className="mx-3 mb-2">
+                                <a
+                                  href={lesson.video_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-blue-500 hover:underline"
+                                >
+                                  ▶ Watch Video
+                                </a>
+                              </div>
                             )}
                           </div>
-                          {lesson.done && (
-                            <span className="text-[10px] text-green-500 font-semibold bg-green-50 px-1.5 py-0.5 rounded-full flex-shrink-0">✓</span>
-                          )}
-                        </button>
-                      ))}
+                        );
+                      })}
                     </>
                   ) : (
                     <p className="text-sm text-gray-400 text-center py-4">No lessons found for this course.</p>
@@ -349,6 +439,40 @@ const MyCoursesSection = ({ user, enrolledCourses, allCourses, wishlistItems, on
           onClose={() => setCertCourse(null)}
         />
       )}
+
+      {/* ── Explore More Courses ─────────────────────────────────────── */}
+      {availableCourses.length > 0 && (
+        <div className="mt-10">
+          <p className="text-sm font-semibold text-gray-500 mb-4">Explore More Courses</p>
+          <div className="grid gap-4">
+            {availableCourses.map((course) => (
+              <div
+                key={course.id}
+                className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+              >
+                <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                  <BookOpen className="w-6 h-6 text-indigo-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-gray-800 text-sm">{course.title}</h4>
+                  {course.category && <p className="text-xs text-gray-400 mt-0.5">{course.category}</p>}
+                  {course.description && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{course.description}</p>}
+                </div>
+                <button
+                  onClick={() => handleEnroll(course.id)}
+                  disabled={enrollingId === course.id}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white flex-shrink-0
+                             transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-60"
+                  style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+                >
+                  {enrollingId === course.id ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  Enroll Now
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -356,8 +480,12 @@ const MyCoursesSection = ({ user, enrolledCourses, allCourses, wishlistItems, on
 // ── Section: Progress ─────────────────────────────────────────────────────────
 
 const ProgressSection = ({ allProgress, loading }) => {
-  const overall = allProgress.length
-    ? Math.round(allProgress.reduce((a, c) => a + (c.percentage || 0), 0) / allProgress.length)
+  // Correct overall: sum all completed lessons / sum all total lessons * 100
+  // This avoids the "500%" bug caused by averaging percentages across courses.
+  const totalDoneAll = allProgress.reduce((a, c) => a + (Number(c.completed_lessons) || 0), 0);
+  const totalLessonsAll = allProgress.reduce((a, c) => a + (Number(c.total_lessons) || 0), 0);
+  const overall = totalLessonsAll > 0
+    ? Math.min(100, Math.round((totalDoneAll / totalLessonsAll) * 100))
     : 0;
 
   if (loading) return <Spinner />;
@@ -416,89 +544,171 @@ const ProgressSection = ({ allProgress, loading }) => {
 
 // ── Section: Assessments ──────────────────────────────────────────────────────
 
-const AssessmentsSection = () => (
-  <div className="max-w-2xl">
-    <h2 className="text-xl font-bold text-gray-800 mb-6">Assessments</h2>
-    <div className="space-y-4">
-      {ASSESSMENTS.map((a) => (
-        <div key={a.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: a.status === 'completed' ? 'rgba(99,102,241,0.1)' : 'rgba(251,191,36,0.1)' }}
-          >
-            <ClipboardList className="w-5 h-5" style={{ color: a.status === 'completed' ? '#6366f1' : '#f59e0b' }} />
-          </div>
-          <div className="flex-1">
-            <p className="font-semibold text-gray-800 text-sm">{a.title}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{a.course}</p>
-          </div>
-          <div className="text-right flex-shrink-0">
-            {a.status === 'completed' ? (
-              <>
-                <span className="text-xs font-bold text-indigo-600 block">{a.score}</span>
-                <span className="text-[11px] text-green-500 font-semibold">✓ Completed</span>
-              </>
-            ) : (
-              <span className="text-xs font-semibold text-amber-500 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200">Pending</span>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-);
+// const AssessmentsSection = () => (
+//   <div className="max-w-2xl">
+//     <h2 className="text-xl font-bold text-gray-800 mb-6">Assessments</h2>
+//     <div className="space-y-4">
+//       {ASSESSMENTS.map((a) => (
+//         <div key={a.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+//           <div
+//             className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+//             style={{ background: a.status === 'completed' ? 'rgba(99,102,241,0.1)' : 'rgba(251,191,36,0.1)' }}
+//           >
+//             <ClipboardList className="w-5 h-5" style={{ color: a.status === 'completed' ? '#6366f1' : '#f59e0b' }} />
+//           </div>
+//           <div className="flex-1">
+//             <p className="font-semibold text-gray-800 text-sm">{a.title}</p>
+//             <p className="text-xs text-gray-400 mt-0.5">{a.course}</p>
+//           </div>
+//           <div className="text-right flex-shrink-0">
+//             {a.status === 'completed' ? (
+//               <>
+//                 <span className="text-xs font-bold text-indigo-600 block">{a.score}</span>
+//                 <span className="text-[11px] text-green-500 font-semibold">✓ Completed</span>
+//               </>
+//             ) : (
+//               <span className="text-xs font-semibold text-amber-500 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200">Pending</span>
+//             )}
+//           </div>
+//         </div>
+//       ))}
+//     </div>
+//   </div>
+// );
 
-// ── Section: Notes ────────────────────────────────────────────────────────────
+// ── Section: Daily Tasks ─────────────────────────────────────────────────────
 
-const NotesSection = () => {
-  const [notes, setNotes] = useState([
-    { id: 1, text: 'Review flexbox cheat sheet before next session.', date: 'Apr 8' },
-    { id: 2, text: 'Look into React useCallback for performance.', date: 'Apr 9' },
-  ]);
+const DailyTasksSection = ({ userId }) => {
+  const [tasks, setTasks] = useState([]);
   const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [togglingId, setTogglingId] = useState(null);
+  const [error, setError] = useState(null);
 
-  const addNote = () => {
-    if (!input.trim()) return;
-    const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    setNotes((prev) => [{ id: Date.now(), text: input.trim(), date: today }, ...prev]);
-    setInput('');
+  // Load tasks when section mounts
+  const loadTasks = async () => {
+    if (!userId) { setLoading(false); return; }
+    setLoading(true);
+    try {
+      const data = await fetchTasks(userId);
+      setTasks(data);
+    } catch (e) {
+      setError('Could not load tasks: ' + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadTasks(); }, [userId]);
+
+  const handleAdd = async () => {
+    if (!input.trim() || !userId) return;
+    setAdding(true);
+    setError(null);
+    try {
+      await addTask(userId, input.trim());
+      setInput('');
+      await loadTasks();
+    } catch (e) {
+      setError('Failed to add task: ' + e.message);
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleToggle = async (taskId) => {
+    setTogglingId(taskId);
+    setError(null);
+    try {
+      await toggleTask(taskId);
+      await loadTasks();
+    } catch (e) {
+      setError('Failed to update task: ' + e.message);
+    } finally {
+      setTogglingId(null);
+    }
   };
 
   return (
     <div className="max-w-xl">
-      <h2 className="text-xl font-bold text-gray-800 mb-6">Notes</h2>
+      <h2 className="text-xl font-bold text-gray-800 mb-6">Today's Tasks</h2>
+      {error && <div className="mb-4"><ApiError message={error} /></div>}
+
+      {/* Add task input */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
-        <textarea
+        <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addNote(); } }}
-          placeholder="Jot down a quick note… (Enter to save)"
-          rows={3}
-          className="w-full text-sm text-gray-700 placeholder-gray-300 resize-none outline-none leading-relaxed"
+          onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
+          placeholder="Add a task for today..."
+          className="w-full text-sm text-gray-700 placeholder-gray-300 outline-none leading-relaxed border-b border-gray-100 pb-3 mb-3"
         />
-        <div className="flex justify-end mt-3">
-          <button onClick={addNote} className="px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:scale-105 hover:shadow-md active:scale-95" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-            Save Note
+        <div className="flex justify-end">
+          <button
+            onClick={handleAdd}
+            disabled={adding || !input.trim()}
+            className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:scale-105 hover:shadow-md active:scale-95 disabled:opacity-60"
+            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+          >
+            {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            Add Task
           </button>
         </div>
       </div>
-      <div className="space-y-3">
-        {notes.length === 0
-          ? <p className="text-sm text-gray-300 text-center py-8">No notes yet. Start writing!</p>
-          : notes.map((note) => (
-            <div key={note.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-start gap-3 group hover:shadow-md transition-shadow duration-200">
-              <FileText className="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm text-gray-700 leading-relaxed">{note.text}</p>
-                <p className="text-xs text-gray-300 mt-1">{note.date}</p>
+
+      {/* Task list */}
+      {loading ? (
+        <Spinner />
+      ) : tasks.length === 0 ? (
+        <p className="text-sm text-gray-300 text-center py-8">No tasks yet. Add one above!</p>
+      ) : (
+        <div className="space-y-3">
+          {tasks.map((task) => {
+            const done = task.is_completed === 1 || task.is_completed === true;
+            return (
+              <div
+                key={task.task_id}
+                className={`bg-white rounded-2xl border shadow-sm p-4 flex items-center gap-3 transition-all duration-200 hover:shadow-md ${done ? 'border-green-100 opacity-70' : 'border-gray-100'
+                  }`}
+              >
+                {/* Checkbox */}
+                <button
+                  onClick={() => handleToggle(task.task_id)}
+                  disabled={togglingId === task.task_id}
+                  className="flex-shrink-0 disabled:opacity-60"
+                  title={done ? 'Mark as pending' : 'Mark as completed'}
+                >
+                  {togglingId === task.task_id ? (
+                    <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />
+                  ) : done ? (
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                  ) : (
+                    <Circle className="w-5 h-5 text-gray-300 hover:text-indigo-400 transition-colors" />
+                  )}
+                </button>
+
+                {/* Task text */}
+                <p className={`flex-1 text-sm leading-relaxed ${done ? 'line-through text-gray-400' : 'text-gray-700'
+                  }`}>
+                  {task.task_text}
+                </p>
+
+                {/* Badge */}
+                {done ? (
+                  <span className="text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full flex-shrink-0">
+                    ✓ Done
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex-shrink-0">
+                    Pending
+                  </span>
+                )}
               </div>
-              <button onClick={() => setNotes((prev) => prev.filter((n) => n.id !== note.id))} className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-red-400">
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))
-        }
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
@@ -610,7 +820,12 @@ const WishlistSection = ({ userId, allCourses, wishlistItems, onWishlistChange, 
 
 const CertificatesSection = ({ allProgress, enrolledCourses, user }) => {
   const [certCourse, setCertCourse] = useState(null);
-  const completed = allProgress.filter((c) => (c.percentage ?? 0) === 100);
+  // Use Number() to handle DB returning percentage as string '100' vs number 100
+  const completed = allProgress.filter((c) => {
+    const done = Number(c.completed_lessons ?? 0);
+    const total = Number(c.total_lessons ?? 0);
+    return total > 0 && done >= total;
+  });
 
   return (
     <div className="max-w-2xl">
@@ -659,7 +874,9 @@ const Dashboard = () => {
   const userId = user?.user_id || user?.db_id;
 
   const [activeTab, setActiveTab] = useState('profile');
-  const [streak] = useState(5);
+
+  // Ref used by Resume Course button to scroll to the courses section
+  const coursesRef = React.useRef(null);
 
   const [allCourses, setAllCourses] = useState([]);
   const [enrolledCourses, setEnrolledCourses] = useState([]);
@@ -736,6 +953,16 @@ const Dashboard = () => {
     ? (allProgress.find((p) => p.id === lastCourse.id)?.percentage ?? 0)
     : 0;
 
+  // ── Streak: check if user completed any lesson today using allProgress ──────
+  // allProgress rows have completed_lessons count; we derive activity from
+  // whether any course shows completed_lessons > 0 AND the data is fresh.
+  // Simple version: streak is "active" if user has at least 1 completed lesson total.
+  // We use the real number of total completed lessons as the streak display value.
+  const totalCompletedLessons = allProgress.reduce((a, c) => a + (Number(c.completed_lessons) || 0), 0);
+  // streakDays = how many distinct courses the user has made any progress in
+  const streakDays = allProgress.filter((c) => Number(c.completed_lessons) > 0).length;
+  const streakActive = totalCompletedLessons > 0;
+
   const renderContent = () => {
     switch (activeTab) {
       case 'profile':
@@ -744,7 +971,7 @@ const Dashboard = () => {
             user={user}
             enrolledCourses={enrolledCourses}
             allProgress={allProgress}
-            streak={streak}
+            streak={streakDays}
           />
         );
       case 'courses':
@@ -755,17 +982,19 @@ const Dashboard = () => {
               user={user}
               enrolledCourses={enrolledCourses}
               allCourses={allCourses}
+              allProgress={allProgress}
               wishlistItems={wishlistItems}
               onWishlistChange={loadWishlist}
               onProgress={loadProgress}
+              onEnroll={loadEnrollments}
             />
           );
       case 'progress':
         return <ProgressSection allProgress={allProgress} loading={loadingProgress} />;
-      case 'assessments':
-        return <AssessmentsSection />;
-      case 'notes':
-        return <NotesSection />;
+      // case 'assessments': — disabled (Assessments feature removed from sidebar)
+      //   return <AssessmentsSection />;
+      case 'tasks':
+        return <DailyTasksSection userId={userId} />;
       case 'wishlist':
         return (
           <WishlistSection
@@ -803,9 +1032,15 @@ const Dashboard = () => {
             <p className="text-sm text-gray-400 mt-0.5">Here's your learning dashboard.</p>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 bg-orange-50 border border-orange-200 text-orange-600 text-sm font-bold px-4 py-2 rounded-xl">
-              🔥 {streak} Day Streak
-            </div>
+            {streakActive ? (
+              <div className="flex items-center gap-1.5 bg-orange-50 border border-orange-200 text-orange-600 text-sm font-bold px-4 py-2 rounded-xl">
+                🔥 {streakDays} Course{streakDays !== 1 ? 's' : ''} In Progress
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 text-gray-400 text-sm font-medium px-4 py-2 rounded-xl">
+                No learning activity yet
+              </div>
+            )}
             <div className="text-right">
               <p className="text-sm font-semibold text-gray-700">{user?.name}</p>
               <p className="text-xs text-gray-400">{user?.email}</p>
@@ -828,13 +1063,19 @@ const Dashboard = () => {
           <ContinueLearning
             course={lastCourse}
             progress={lastProgress}
-            streak={streak}
-            onResume={() => setActiveTab('courses')}
+            streak={streakDays}
+            onResume={() => {
+              setActiveTab('courses');
+              // Scroll to courses section after tab switch (small delay for render)
+              setTimeout(() => {
+                coursesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }, 100);
+            }}
           />
         )}
 
         {/* Tab content */}
-        <div key={activeTab} style={{ animation: 'fadeIn 0.2s ease-out' }}>
+        <div key={activeTab} ref={coursesRef} style={{ animation: 'fadeIn 0.2s ease-out' }}>
           {renderContent()}
         </div>
       </main>
