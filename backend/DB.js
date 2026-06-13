@@ -2,13 +2,15 @@
 import mysql from 'mysql2';
 
 const db = mysql.createPool({
-  host:            'localhost',
-  user:            'root',
-  password:        '1234',
-  database:        'skillsphere_db',
-  waitForConnections: true,
+  host: process.env.DB_HOST || "localhost",
+  port: process.env.DB_PORT || 3306,
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "",
+  database: process.env.DB_NAME || "your_local_database_name",
+});
+waitForConnections: true,
   connectionLimit: 10,
-  queueLimit:      0,
+    queueLimit: 0,
 });
 
 // Test connection on startup
