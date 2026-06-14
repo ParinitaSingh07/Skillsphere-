@@ -1,7 +1,8 @@
 // src/api/skillsphere.js
 // Central API utility — all fetch calls go through here
 
-const BASE_URL = 'http://localhost:5000';
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 // ── helper ────────────────────────────────────────────────────────────────────
 async function request(method, path, body) {
@@ -20,7 +21,7 @@ async function request(method, path, body) {
 }
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
-export const loginUser    = (email, password) => request('POST', '/auth/login',    { email, password });
+export const loginUser = (email, password) => request('POST', '/auth/login', { email, password });
 export const registerUser = (name, email, password) => request('POST', '/auth/register', { name, email, password });
 
 // ── Courses ───────────────────────────────────────────────────────────────────
@@ -57,7 +58,7 @@ export const removeFromWishlist = (wishlistId) =>
   request('DELETE', `/wishlist/${wishlistId}`);
 
 // ── Daily Tasks ───────────────────────────────────────────────────────────────
-export const fetchTasks    = (userId)              => request('GET',  `/tasks/${userId}`);
-export const addTask       = (user_id, task_text)  => request('POST', '/tasks', { user_id, task_text });
-export const toggleTask    = (taskId)              => request('PUT',  `/tasks/${taskId}/toggle`);
+export const fetchTasks = (userId) => request('GET', `/tasks/${userId}`);
+export const addTask = (user_id, task_text) => request('POST', '/tasks', { user_id, task_text });
+export const toggleTask = (taskId) => request('PUT', `/tasks/${taskId}/toggle`);
 
